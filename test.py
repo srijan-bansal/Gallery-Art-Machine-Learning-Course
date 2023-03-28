@@ -8,8 +8,9 @@ from nltk.tokenize import sent_tokenize
 from transformers import DataCollatorForSeq2Seq
 from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
 nltk.download("punkt")
+import torch 
 
-
+torch.manual_seed(3)
 
 
 # helper function to postprocess text
