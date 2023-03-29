@@ -12,6 +12,21 @@ import torch
 
 torch.manual_seed(3)
 
+import argparse
+
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data_file", default="data_new.csv", help="dataset name")
+    parser.add_argument("--model_name", default="t5-large")
+    parser.add_argument("--instruction", default="Write a poem : ")
+    parser.add_argument("--max_source_length", default=600, type=int)    
+    parser.add_argument("--max_target_length", default=512, type=int)        
+    parser.add_argument("--num_epochs", default=10, type=int)        
+    parser.add_argument("--batch_size", default=8, type=int)        
+    parser.add_argument("--grad_steps", default=2, type=int)        
+    parser.add_argument("--lr", default=5e-5, type=float)        
+    args = parser.parse_args()
+    return args
 
 # helper function to postprocess text
 def postprocess_text(preds, labels):
@@ -26,8 +41,8 @@ def postprocess_text(preds, labels):
 
 
 def main():
-
-    dataset = load_dataset("csv", data_files="data.csv")
+    args = get_args()
+    dataset = load_dataset("csv", data_files=args.data_file)
     dataset = dataset['train']  
     context = " [SEP] "
     poem_id = "-1"
@@ -50,7 +65,7 @@ def main():
     print(f"Train dataset size: {len(dataset['train'])}")
     print(f"Test dataset size: {len(dataset['test'])}")
 
-    model_id= "t5-large" #"google/flan-t5-base"
+    model_id= args.model_name
     
     # Load tokenizer of FLAN-t5-base
     tokenizer = AutoTokenizer.from_pretrained(model_id)
@@ -69,9 +84,9 @@ def main():
     max_target_length = max([len(x) for x in tokenized_targets["input_ids"]])
     print(f"Max target length: {max_target_length}")
     
-    def preprocess_function(sample, padding="max_length", max_source_length=256, max_target_length=512):
+    def preprocess_function(sample, padding="max_length", max_source_length=args.max_source_length, max_target_length=args.max_target_length):
         # add prefix to the input for t5
-        prompt = "Write a poem: "
+        prompt = args.instruction
         
         inputs = [f"{prompt}: " + item for item in sample["context"]]
 
@@ -123,15 +138,16 @@ def main():
         prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds]
         result["gen_len"] = np.mean(prediction_lens)
         return result
-
+        
     # Define training args
     training_args = Seq2SeqTrainingArguments(
-        per_device_train_batch_size=8,
-        per_device_eval_batch_size=8,
+        per_device_train_batch_size=args.batch_size,
+        per_device_eval_batch_size=args.batch_size,
+        gradient_accumulation_steps=args.grad_steps,
         predict_with_generate=True,
         fp16=False, # Overflows with fp16
-        learning_rate=5e-5,
-        num_train_epochs=10,
+        learning_rate=args.lr,
+        num_train_epochs=args.num_epochs,
         logging_dir="logs",
         logging_strategy="epoch",
         evaluation_strategy="epoch",
