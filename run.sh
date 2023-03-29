@@ -1,4 +1,4 @@
-python test.py --data_file data_new.csv \
+CUDA_VISIBLE_DEVICES=0,1 python test.py --data_file data_new.csv \
     --model_name t5-large \
     --instruction "Write a poem :" \
     --max_source_length 600 \
